@@ -8,7 +8,7 @@
 ;; Nyní se budeme zabývat obecnými grafy.
 
 ;; Graf je kolekce vrcholů (nodes) a hran (edges), které vrcholy spojují.
-;; V orientovaném grafu pak mají hrany směr (vedou od jednoho vrcholu k druhému.
+;; V orientovaném grafu pak mají hrany směr (vedou od jednoho vrcholu k druhému).
 
 ;; Sample problem:
 ;; Nadesignujme algoritmus, který najde způsob jak předat informaci
@@ -45,8 +45,8 @@
 
 
 
-; String Graph -> [List-of Node]
-; Vrátí jména sousedů node se jménem name
+; String Graph -> [List-of String]
+; Vrátí jména sousedů vrcholu se jménem name.
 (define (neighbours name g)
   (cond
     [(empty? g) (error name " not in n")]
@@ -65,9 +65,9 @@
 ;; Co vše může funkce vrátit!?
 ;; Hlavička ani purpose statement nám neříká co přesně bude výsledek
 ;; obsahovat!
-#; (find-path "C" "D" graph-list) ; Musí vždy vrátit unikátní cestu
-#; (find-path "E" "D" graph-list) ; Musí vybrat a vrátit jednu cestu
-#; (find-path "C" "G" graph-list) ; Musí označit, že taková cesta neexistuje
+#; (find-path "C" "D" graph) ; Musí vrátit cestu
+#; (find-path "E" "D" graph) ; Může vybrat a vrátit jednu z více cest
+#; (find-path "C" "G" graph) ; Musí označit, že taková cesta neexistuje
 
 ;; Máme možnosti:
 ;;  - Výsledek bude list všech vrcholů včetně origin a dest. Pak může '() označit,
@@ -123,7 +123,7 @@
          ... (find-path/list (neighbours origin g)
                             dest g) ...)]))
 
-;; Sice ještě nemáme implementovanou funkce find-path/list, díky headeru ji ale
+;; Sice ještě nemáme implementovanou funkci find-path/list, díky headeru ji ale
 ;; můžeme rovnou "napojit"! Musíme brát v potaz, že vrací [Maybe Path]
 
 #;(define (find-path origin dest g)
@@ -131,7 +131,7 @@
       [(string=? origin dest)
        (list dest)]
       [else
-       (local ((define next (neighbors origin g))
+       (local ((define next (neighbours origin g))
                (define candidate
                  (find-path/list next dest g)))
          (cond
@@ -203,9 +203,9 @@
 (check-expect (find-path/visited "A" "C" cyclic-graph '())
               (list "A" "B" "E" "C"))
 (check-expect (find-path/visited "C" "G" cyclic-graph '())
-              #false)
+              (list "C" "B" "E" "F" "G"))
 (check-expect (find-path/visited "A" "G" cyclic-graph '())
-              (list "A" "B" "E" "C" "D"))
+              (list "A" "B" "E" "F" "G"))
 (define (find-path/visited origin dest g visited)
   (local (; String [List-of String] -> [Maybe Path]
           (define (fpv o vis)

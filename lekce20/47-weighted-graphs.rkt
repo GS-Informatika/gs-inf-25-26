@@ -86,6 +86,9 @@
 ;;   - BFS: sousedy přidám DOZADU fronty   → fronta   (FIFO) → šířka
 
 ;; BFS zaručuje nejkratší cestu měřenou POČTEM HRAN — ignoruje ceny.
+;; V této lekci nás zajímá hlavně myšlenka worklistu.
+;; Naše reprezentace fronty je obyčejný seznam, takže implementace není
+;; asymptoticky optimální, ale je dobře čitelná.
 
 ; Path je [List-of String]
 
@@ -128,10 +131,12 @@
 ;; Část 4 — Dijkstrův algoritmus
 ;; ============================================================
 
-;; Dijkstra = BFS, ale fronta je seřazena podle CENY dosud nalezené cesty.
-;; Tím zaručíme, že vždy zpracujeme nejslibnější vrchol jako první.
+;; Dijkstra = BFS, ale worklist je seřazen podle CENY dosud nalezené cesty.
+;; Tím zaručíme, že vždy zpracujeme nejlevnější dosud čekající variantu jako první.
 ;;
 ;; Generativní struktura zůstává stejná — mění se jen způsob řazení fronty.
+;; Opět používáme obyčejný seznam a `sort`; v produkční implementaci by se
+;; použila prioritní fronta.
 
 ; DijkItem je (make-dijk-item String Path Number)
 ; jméno vrcholu + cesta z origin + celková cena cesty
@@ -186,11 +191,19 @@
 ;;   generate:  vzít první z fronty, vygenerovat sousedy jako nové položky
 ;;   combine:   přidat nové položky do fronty
 ;;
-;; Liší se POUZE způsobem řazení fronty:
+;; Liší se hlavně způsobem organizace worklistu:
 ;;
-;;   DFS       zásobník (cons)          → nějaká cesta          O(V+E)
-;;   BFS       fronta (append)          → nejkratší (hrany)      O(V+E)
-;;   Dijkstra  sort podle g(v)          → nejlevnější (cena)     O(E log V)
+;;   DFS       zásobník (cons)          → nějaká cesta
+;;   BFS       fronta (append)          → nejkratší podle hran
+;;   Dijkstra  řazení podle g(v)        → nejlevnější podle ceny
+;;
+;; Teoreticky při vhodných datových strukturách:
+;;   DFS/BFS   O(V + E)
+;;   Dijkstra  O(E log V)
+;;
+;; Pozor: tento konkrétní výukový kód používá seznamy, `append` a `sort`,
+;; takže praktická složitost je horší. To je v pořádku — cílem je zde
+;; pochopit princip algoritmu.
 
 
 ;; ============================================================

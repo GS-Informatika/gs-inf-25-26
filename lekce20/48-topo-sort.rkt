@@ -69,11 +69,33 @@
 ;; Klíčová otázka: proč (cons name acc*) a ne (append acc* (list name))?
 ;; Zkuste si projít trace pro "zaklady" a uvidíte rozdíl!
 
+; String [List-of String] -> Natural
+; Vrátí index první occurrence name v xs.
+(define (index-of name xs)
+  (local ((define (go ys i)
+            (cond
+              [(empty? ys) (error name " not found")]
+              [(string=? name (first ys)) i]
+              [else (go (rest ys) (+ i 1))])))
+    (go xs 0)))
+
+; [List-of String] Graph -> Boolean
+; Je ordering validní topologické pořadí grafu g?
+(define (valid-topo-order? ordering g)
+  (and (= (length ordering) (length g))
+       (andmap (lambda (n) (member (node-name n) ordering)) g)
+       (andmap (lambda (n)
+                 (andmap (lambda (nbr)
+                           (< (index-of (node-name n) ordering)
+                              (index-of nbr ordering)))
+                         (node-neighbours n)))
+               g)))
+
 ; Graph -> [List-of String]
 ; Topologicky seřadí vrcholy g pomocí DFS post-order.
 ; Předpokládá, že g je DAG (acyklický).
-(check-expect (topo-sort/dfs prereq-graph)
-              (list "zaklady" "prog1" "prog2" "linalg" "algo"))
+(check-expect (valid-topo-order? (topo-sort/dfs prereq-graph) prereq-graph)
+              #true)
 (define (topo-sort/dfs g)
   (local (; String [List-of String] -> [List-of String]
           ; Post-order DFS z name; acc = vrcholy seřazené ZA name.
@@ -148,8 +170,8 @@
 ; Graph -> [Maybe [List-of String]]
 ; Topologicky seřadí vrcholy g pomocí Kahnova algoritmu.
 ; Vrátí #false pokud g obsahuje cyklus.
-(check-expect (topo-kahn prereq-graph)
-              (list "zaklady" "linalg" "prog1" "prog2" "algo"))
+(check-expect (valid-topo-order? (topo-kahn prereq-graph) prereq-graph)
+              #true)
 (check-expect (topo-kahn cyclic-prereq) #false)
 (define (topo-kahn g)
   (local (; String Degrees -> Number
