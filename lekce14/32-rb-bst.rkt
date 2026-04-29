@@ -87,6 +87,11 @@
 ;; Nejdříve vložíme nový prvek jako červený vrchol
 ;; a pak cestou zpět opravujeme zakázané konfigurace.
 ;;
+;; Proč červený? Červený vrchol nezvyšuje černou
+;; výšku, takže neporuší invariant 3 (stejný počet
+;; černých na každé cestě). Může ale porušit
+;; invariant 2 nebo 4 — to opravuje balance.
+;;
 ;; Pro jednoduchost pouze vložení bez mazání.
 
 ; [RBBST T] [T T -> Boolean] [T T -> Boolean] T -> [RBBST T]
@@ -109,6 +114,13 @@
 
           ; [RBNode T] -> [RBNode T]
           ; Rotates subtree to the left around its root
+          ;;
+          ;;    X              Y
+          ;;   / \r    →     r/ \
+          ;;  a   Y          X   c
+          ;;     / \        / \
+          ;;    b   c      a   b
+          ;;
           (define (rotate-left node)
             (local ((define pivot (rb-node-right node)))
               (make-rb-node (rb-node-color node)
@@ -121,6 +133,13 @@
 
           ; [RBNode T] -> [RBNode T]
           ; Rotates subtree to the right around its root
+          ;;
+          ;;      Y          X
+          ;;    r/ \    →   / \r
+          ;;    X   c      a   Y
+          ;;   / \            / \
+          ;;  a   b          b   c
+          ;;
           (define (rotate-right node)
             (local ((define pivot (rb-node-left node)))
               (make-rb-node (rb-node-color node)
@@ -147,19 +166,22 @@
             (cond [(rb-empty? tree) EMPTY]
                   [else
                    (local (
-                           ; [RBNode T]
+                           ;; Červená hrana směřuje doprava → otočíme doleva
+                           ;; (oprava invariantu 4)
                            (define step1
                              (if (and (red-node? (rb-node-right tree))
                                       (not (red-node? (rb-node-left tree))))
                                  (rotate-left tree)
                                  tree))
-                           ; [RBNode T]
+                           ;; Dvě červené hrany za sebou doleva → otočíme doprava
+                           ;; (oprava invariantu 2)
                            (define step2
                              (if (and (red-node? (rb-node-left step1))
                                       (red-node? (rb-node-left (rb-node-left step1))))
                                  (rotate-right step1)
                                  step1))
-                           ; [RBNode T]
+                           ;; Obě hrany červené → přebarvíme
+                           ;; (rozštěpení "4-uzlu", posun červené nahoru)
                            (define step3
                              (if (and (red-node? (rb-node-left step2))
                                       (red-node? (rb-node-right step2)))
@@ -208,7 +230,40 @@
                             (make-rb-node BLACK 3 EMPTY EMPTY)))
 
 
-;; Další ukázka vkládání
+;; Další ukázka vkládání — krokový průchod:
+;;
+;; 1) insert 10:  10(B)
+;;
+;; 2) insert 5:   10(B)
+;;               /
+;;             5(R)
+;;
+;; 3) insert 1:
+;;    insert/inner vytvoří 1(R) vlevo od 5(R)
+;;    → balance na úrovni 10: left=5(R), left.left=1(R)
+;;      → step2: rotate-right
+;;
+;;        5(B)            5(R)
+;;       / \     flip    / \
+;;     1(R) 10(R) →    1(B) 10(B)
+;;
+;;      → step3: flip-colors (oba potomci červení)
+;;      → paint root BLACK:
+;;
+;;        5(B)
+;;       / \
+;;     1(B) 10(B)
+;;
+;; 4) insert 7:
+;;    7 > 5, jde doprava; 7 < 10, jde doleva
+;;    → vznikne 7(R) jako levý potomek 10(B)
+;;    → žádná oprava není potřeba (jedna červená doleva)
+;;
+;;        5(B)
+;;       / \
+;;     1(B) 10(B)
+;;          /
+;;        7(R)
 
 (define RB-BST-3
   (rb-insert

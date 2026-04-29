@@ -148,25 +148,23 @@
 (check-expect (find-path "C" "G" graph)
               #false)
 (define (find-path origin dest g)
-  (cond
-    [(string=? origin dest) (list dest)]
-    [else (local ((define next (neighbours origin g))
-                  (define candidate (find-path/list next dest g)))
+  (local (; String -> [Maybe Path]
+          (define (fp o)
             (cond
-              [(boolean? candidate) #false]
-              [else (cons origin candidate)]))]))
-
-; [List-of String] String Graph -> [Maybe Path]
-; nalezne cestu z nějákého vrcholu z origins do dest v grafu g
-; Vrátí false pokud nenalezne
-(define (find-path/list origins dest g)
-  (cond
-    [(empty? origins) #false]
-    [else (local ((define candidate (find-path (first origins) dest g)))
+              [(string=? o dest) (list dest)]
+              [else (local ((define candidate (fp/list (neighbours o g))))
+                      (cond
+                        [(boolean? candidate) #false]
+                        [else (cons o candidate)]))]))
+          ; [List-of String] -> [Maybe Path]
+          (define (fp/list origins)
             (cond
-              [(boolean? candidate)
-               (find-path/list (rest origins) dest g)]
-              [else candidate]))]))
+              [(empty? origins) #false]
+              [else (local ((define candidate (fp (first origins))))
+                      (cond
+                        [(boolean? candidate) (fp/list (rest origins))]
+                        [else candidate]))])))
+    (fp origin)))
 
 ;; Funkce find-path/list zajišťuje backtracking - postupně zkoušíme
 ;; jednotlivé možnosti, dokud nenarazíme na správnou.
@@ -174,4 +172,57 @@
 ;; Co kdybychom přidali hranu od C do B. Pak už náš graf nebude acyklický.
 ;; Najde náš algoritmus cestu pro každý vstup?
 
-;; Pro vyřešení tohoto problému lze využít například koncept akumulátorů.
+(define cyclic-graph
+  (list (make-node "A" (list "B" "E"))
+        (make-node "B" (list "E" "F"))
+        (make-node "C" (list "D" "B"))   ; C → B vytváří cyklus
+        (make-node "D" '())
+        (make-node "E" (list "C" "F"))
+        (make-node "F" (list "D" "G"))
+        (make-node "G" '())))
+
+;; (find-path "A" "G" cyclic-graph) ; Zkuste - algoritmus se zacyklí!
+
+;; Problém: find-path může navštívit stejný vrchol vícekrát
+;; a nikdy neskončit (cyklus C → B → E → C → ...).
+
+;; Řešení: budeme si pamatovat, které vrcholy jsme již navštívili.
+;; Tato "paměť" je přesně to, co nazýváme akumulátorem!
+
+; String String Graph [List-of String] -> [Maybe Path]
+; Jako find-path, ale visited obsahuje již navštívené vrcholy.
+; Akumulátor invariant: visited = seznam vrcholů, které jsme
+; navštívili na cestě k origin (nebo dříve prozkoumali).
+#;(define (find-path/visited origin dest g visited) #false)
+
+;; Triviální případ zůstává stejný.
+;; V rekurzivním případě:
+;;  1) Přeskočíme sousedy, které jsme již navštívili.
+;;  2) Přidáme origin do visited, než prozkoumáme jeho sousedy.
+
+(check-expect (find-path/visited "A" "C" cyclic-graph '())
+              (list "A" "B" "E" "C"))
+(check-expect (find-path/visited "C" "G" cyclic-graph '())
+              #false)
+(check-expect (find-path/visited "A" "G" cyclic-graph '())
+              (list "A" "B" "E" "C" "D"))
+(define (find-path/visited origin dest g visited)
+  (local (; String [List-of String] -> [Maybe Path]
+          (define (fpv o vis)
+            (cond
+              [(string=? o dest) (list dest)]
+              [(member o vis) #false]
+              [else (local ((define candidate
+                              (fpv/list (neighbours o g) (cons o vis))))
+                      (cond
+                        [(boolean? candidate) #false]
+                        [else (cons o candidate)]))]))
+          ; [List-of String] [List-of String] -> [Maybe Path]
+          (define (fpv/list origins vis)
+            (cond
+              [(empty? origins) #false]
+              [else (local ((define candidate (fpv (first origins) vis)))
+                      (cond
+                        [(boolean? candidate) (fpv/list (rest origins) vis)]
+                        [else candidate]))])))
+    (fpv origin visited)))
